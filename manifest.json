@@ -1,0 +1,28 @@
+{
+  "manifest_version": 2,
+  "name": "GIFCap - CSCI4140Project",
+  "version": "1.0",
+  "description": "Capture, Edit & Upload GIFs!",
+  "permissions": [
+    "storage", "tabs", "http://*/*", "contextMenus", "activeTab"
+  ],
+  "background": {
+    "page": "background.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["jquery-3.4.1.min.js", "content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "browser_action": {
+    "default_icon": "icon.png",
+    "default_popup": "popup.html"
+  },
+  "web_accessible_resources": [
+    "jquery-3.4.1.min.js", "html2canvas.min.js", "content_overlay.html", "content_capframe.html", "editor.html"
+  ],
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
+}
