@@ -91,6 +91,14 @@ body>div>div {
     border: none !important;    
 }
 
+#rawImg {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    user-select: none;
+    z-index: -1;
+}
+
 #merge-canvas {
     display: none;
 }

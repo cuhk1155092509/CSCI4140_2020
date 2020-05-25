@@ -8,26 +8,30 @@ var containerHtml = "<div id=\"gc-container\"></div>";
 $("body").append(containerHtml);
 
 
-// Message Listener from background.js
-chrome.runtime.onMessage.addListener(
-  function (request, sender, sendResponse) {
+// Message Listener
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
-    if (request.msg === "startSelection") {
-      start_selection();
-      //console.log("Start selection message received");
-      //return true;
+  if (request.msg === "startSelection") {
+    // from popup.js
+    start_selection();
 
-    } else if (request.msg === "gifRecordEnd") {
-      console.log("GIF End Response received");
-      reset_button();
-      chrome.runtime.sendMessage({
-        msg: "open_editor_gif",
-        editorUrl: chrome.runtime.getURL(htmlEditor)
-      });
+  } else if (request.msg === "gifRecordEnd") {
+    //from background.js
+    if(request.type == 1) {
+      console.log("[GifCap] GIF capture ends (by command) and success");
+    } else if (request.type == 2){
+      console.log("[GifCap] GIF capture ends (reaches max frame) and success");
     }
-
+    reset_button();
+    /*
+    chrome.runtime.sendMessage({
+      msg: "open_editor_gif",
+      editorUrl: chrome.runtime.getURL(htmlEditor)
+    });
+    */
   }
-);
+
+});
 
 // Variables
 var gcStart = {};
@@ -41,12 +45,15 @@ function getY() { return gcStart.y < gcEnd.y ? gcStart.y : gcEnd.y; }
 function getDX() { return Math.abs(gcStart.x - gcEnd.x); }
 function getDY() { return Math.abs(gcStart.y - gcEnd.y); }
 
+
+/* ===== Overlay ===== */
+
 function start_selection() {
-  $.get(chrome.runtime.getURL(htmlInjectOverlay), function(data) {
+  $.get(chrome.runtime.getURL(htmlInjectOverlay), function (data) {
     $("#gc-container").html(data);
-    //console.log("Injected overlay html");
     isSelecting = false;
     stopSelecting = false;
+    console.log("[GifCap] Please drag and select an area to capture");
   });
 }
 
@@ -59,8 +66,9 @@ function submit_selection() {
   capY = getY();
   capDX = getDX();
   capDY = getDY();
-  console.log('Start:(' + gcStart.x + ',' + gcStart.y + ') | End:(' + gcEnd.x + ',' + gcEnd.y + ') | X:'+capX+' | Y:'+capY+' | DX:'+capDX+' | DY:'+capDY);
-  $.get(chrome.runtime.getURL(htmlInjectCapframe), function(data) {
+  console.log('[GifCap] Selected area [(' + gcStart.x + ',' + gcStart.y + '),(' + gcEnd.x + ',' + gcEnd.y + ')]');
+  console.log('[GifCap] Area info (X:' + capX + ' | Y:' + capY + ' | DX:' + capDX + ' | DY:' + capDY + ')');
+  $.get(chrome.runtime.getURL(htmlInjectCapframe), function (data) {
     $("#gc-container").html(data);
     init_capframe();
   });
@@ -68,7 +76,7 @@ function submit_selection() {
 
 $(window)
 
-  .on('mousedown', function($event) {
+  .on('mousedown', function ($event) {
     if (stopSelecting) { return; }
 
     // Hide hint overlay
@@ -83,15 +91,13 @@ $(window)
       left: gcStart.x,
       top: gcStart.y
     });
-
-    // Debug
-    $('#gc-start').text('(' + gcStart.x + ',' + gcStart.y + ')');
+    //console.log('[GifCapDebug] Area selection start:(' + gcStart.x + ',' + gcStart.y + ')');
   })
 
-  .on('mousemove', function($event) {
+  .on('mousemove', function ($event) {
     // Ignore if we're not selecing
     if (!isSelecting) { return; }
-    
+
     gcEnd.x = $event.clientX;
     gcEnd.y = $event.clientY;
 
@@ -105,33 +111,32 @@ $(window)
       left: getX(),
       top: getY() + getDY() - 31
     });
-    
+
   })
-  
-  .on('mouseup', function($event) {
+
+  .on('mouseup', function ($event) {
     $('#gc-selection').addClass('selected');
     $(".gc-selection-btn").show();
     isSelecting = false;
     stopSelecting = true;
-
-    // Debug
-    $('#gc-end').text('(' + gcEnd.x + ',' + gcEnd.y + ')');
+    //console.log('[GifCapDebug] Area selection end:(' + gcEnd.x + ',' + gcEnd.y + ')');
   });
 
-  
-$(document).on("click", "#gc-selection-confirm", function(e) {
+
+$(document).on("click", "#gc-selection-confirm", function (e) {
   stopSelecting = true;
   end_selection();
   submit_selection();
 });
 
-$(document).on("click", "#gc-selection-cancel", function(e) {
+$(document).on("click", "#gc-selection-cancel", function (e) {
   stopSelecting = true;
   end_selection();
 });
 
 
-/* CAPFRAME */
+/* ===== Capframe ===== */
+
 function init_capframe() {
   $("#gc-capframe-border").css({
     "border-left": capX - 3,
@@ -153,90 +158,66 @@ function init_capframe() {
     "height": capDY
   })
 }
+
 var screenDataURL;
 var gifDataURL = new Array();
 
 function screenCapture() {
+  //console.log("[GifCapDebug]" Issued command: Screen capture");
   chrome.runtime.sendMessage({
     msg: "capture",
     x: capX,
     y: capY,
     dx: capDX,
     dy: capDY
-  }, function(response) {
-
-    //console.log("Received screen capture dataURL");
-    //console.log(response.data);
-    chrome.runtime.sendMessage({
-      msg: "open_editor",
-      editorUrl: chrome.runtime.getURL(htmlEditor),
-      dataUrl: response.data,
-      w: response.w,
-      h: response.h
-    });
+  }, function (response) {
+    console.log("[GifCap] Screen capture success");
   });
 }
 
-/* GIF Recorder */
 function startGifCap() {
+  //console.log("[GifCapDebug] Issued command: Start GIF capture");
   chrome.runtime.sendMessage({
     msg: "gifStart",
     x: capX,
     y: capY,
     dx: capDX,
     dy: capDY
-  }, function(response) {
-
-    //console.log("Received screen capture dataURL");
-    console.log("background starts recording");
-    /*
-    chrome.runtime.sendMessage({
-      msg: "open_editor",
-      editorUrl: chrome.runtime.getURL(htmlEditor),
-      dataUrl: response.data,
-      w: response.w,
-      h: response.h
-    });
-    */
+  }, function (response) {
+    console.log("[GifCap] GIF capture starts")
   });
 }
 
 function stopGifCap() {
-  chrome.runtime.sendMessage({
-    msg: "gifStop"
-  });
+  //console.log("[GifCapDebug] Issued command: Stop GIF capture");
+  chrome.runtime.sendMessage({ msg: "gifStop" });
 }
 
+function reset_button() {
+  $("#gc-capframe-btnGifStart").css({ "display": "inline-block" });
+  $("#gc-capframe-btnGifStop").hide();
+  $("#gc-capframe-btnCap").css({ "display": "inline-block" });
+  $("#gc-capframe-btnEnd").css({ "display": "inline-block" });
+}
 
-/* Button Listeners */
-$(document).on("click", "#gc-capframe-btnGifStart", function(e) {
-  console.log("GIF Start Button clicked");
+$(document).on("click", "#gc-capframe-btnGifStart", function (e) {
   $(this).hide();
-  $("#gc-capframe-btnGifStop").css({"display": "inline-block"});
+  $("#gc-capframe-btnGifStop").css({ "display": "inline-block" });
   $("#gc-capframe-btnCap").hide();
-  //$("#gc-gifcap-toolbar").css({"display": "inline-block"});
+  $("#gc-capframe-btnEnd").hide();
   startGifCap();
 });
 
-$(document).on("click", "#gc-capframe-btnGifStop", function(e) {
-  console.log("GIF Stop Button clicked");
-  reset_button();
+$(document).on("click", "#gc-capframe-btnGifStop", function (e) {
   stopGifCap();
 });
 
-$(document).on("click", "#gc-capframe-btnCap", function(e) {
-  console.log("Capture Button clicked");
+$(document).on("click", "#gc-capframe-btnCap", function (e) {
   screenCapture();
 });
 
-$(document).on("click", "#gc-capframe-end", function(e) {
-  console.log("END Button clicked");
+$(document).on("click", "#gc-capframe-btnEnd", function (e) {
   end_selection();
 });
 
-function reset_button() {
-  $("#gc-capframe-btnGifStart").css({"display": "inline-block"});
-  $("#gc-capframe-btnGifStop").hide();
-  $("#gc-capframe-btnCap").css({"display": "inline-block"});
-}
-//console.log("Content Script Loaded");
+//console.log("[GifCapDebug] Content script loaded");

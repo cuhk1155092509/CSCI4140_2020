@@ -8,11 +8,12 @@ var imgFrame, imgFps;
 var gifArray;
 var gifArrayEdited = new Array();
 
-/* User variable */
+// Custom varibles and default values
 var outputFileName;
 var defaultOutputFilename = "gifcap";
 
-function getOutputFileName() {
+// Get outputFilename from Chrome Storage
+function getOutputFilename() {
     return new Promise(function (resolve, reject) {
         chrome.storage.sync.get("gcOutputFilename", function (result) {
             if (typeof result.gcOutputFilename !== 'undefined') {
@@ -29,6 +30,7 @@ function getOutputFileName() {
     })
 }
 
+// Simulate GIF playing
 function startGifPlaying() {
     var interval = Math.round(1000 / imgFps);
     playIndex = 0;
@@ -47,48 +49,40 @@ function stopGifPlaying() {
     clearInterval(gifPlaying);
 }
 
+// Message listener from background.js
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.msg === "initEditor") {
 
-chrome.runtime.onMessage.addListener(
-    function (request, sender, sendResponse) {
-        if (request.msg === "initEditor") {
+        // Check if this editor page is loaded or not
+        if (!pageLoaded) {
+            pageLoaded = true;
+            type = request.type;
+            var passObject = ["", "image", "GIF"];
+            console.log("[Debug] Received " + passObject[type]);
+            sendResponse(type);
 
-            // Check if this editor page is loaded or not
-            if (!pageLoaded) {
-                pageLoaded = true;
+            imgWidth = request.w;
+            imgHeight = request.h;
+            createCanvas(imgWidth, imgHeight);
 
-                // Check type of editing
-                if (request.type == 1) {
-
-                    // Capture
-                    console.log("[Cap] Received");
-                    sendResponse({ status: 1 });
-                    type = 1;
-                    imgWidth = request.w;
-                    imgHeight = request.h;
-                    createCanvas(request.dataUrl, request.w, request.h);
-
-                } else if (request.type == 2) {
-
-                    // Gif
-                    console.log("[GIF] Received");
-                    sendResponse({ status: 2 })
-                    type = 2;
-                    imgWidth = request.w;
-                    imgHeight = request.h;
-                    imgFrame = request.frame;
-                    imgFps = request.fps;
-                    gifArray = request.gifArray;
-                    createCanvas(gifArray[0], request.w, request.h);
-                    createPreviews();
-
-                }
-
+            if (type == 1) {
+                var rawImgHtml = "<img id='rawImg' src='" + request.data + "'>";
+                $(".editable-canvas-image").parent().append(rawImgHtml);
+            } else if (type == 2) {
+                gifArray = request.data;
+                imgFrame = request.frame;
+                imgFps = request.fps;
+                var rawImgHtml = "<img id='rawImg' src='" + gifArray[0] + "'>";
+                $(".editable-canvas-image").parent().append(rawImgHtml);
+                createPreviews();
+                startGifPlaying();
             }
+            console.log("[Debug] Successfully load " + passObject[type]);
         }
     }
-);
+});
 
-function createCanvas(dataUrl, width, height) {
+function createCanvas(width, height) {
     drawer = new DrawerJs.Drawer(null, {
         texts: customLocalization,
         plugins: drawerPlugins,
@@ -100,9 +94,6 @@ function createCanvas(dataUrl, width, height) {
     drawer.onInsert();
     drawer.api.startEditing();
     drawer.api.stopEditing();
-    var rawImgHtml = "<img id='rawImg' src='" + dataUrl + "' style='position: fixed;top: 0px;left: 0px;user-select: none;z-index: -1;'>";
-    $(".editable-canvas-image").parent().append(rawImgHtml);
-    startGifPlaying();
 }
 
 function createPreviews() {
@@ -118,7 +109,6 @@ function outputCapture() {
         var imgLoaded = 0;
         function checkload(e) {
             imgLoaded++;
-            //console.log("loaded 1");
             if (imgLoaded < 2) {
                 return;
             }
@@ -132,7 +122,8 @@ function outputCapture() {
             var merged = new Image;
             mergedDataUrl = canvas.toDataURL('image/jpeg');
 
-            console.log(mergedDataUrl);
+            //console.log("[Debug] Merged image:");
+            //console.log(mergedDataUrl);
             resolve(mergedDataUrl);
         }
         var raw = new Image;
@@ -150,7 +141,6 @@ function outputGifFrame(frame) {
         var imgLoaded = 0;
         function checkload(e) {
             imgLoaded++;
-            console.log("loaded 1");
             if (imgLoaded < 2) {
                 return;
             }
@@ -164,6 +154,7 @@ function outputGifFrame(frame) {
             var merged = new Image;
             mergedDataUrl = canvas.toDataURL('image/jpeg');
 
+            //console.log("[Debug] Merged 1 frame:");
             //console.log(mergedDataUrl);
             resolve(context);
         }
@@ -286,133 +277,22 @@ var drawerPlugins = [
 ];
 
 $(document).ready(function () {
-    /*
-    var drawer = new DrawerJs.Drawer(null, {
-        texts: customLocalization,
-        plugins: drawerPlugins,
-        defaultImageUrl: '/drawerJs/drawerDefaultImage.jpg',
-        defaultActivePlugin : { name : 'Pencil', mode : 'lastUsed'},
-    }, 600, 600);
-    $('#canvas-editor').append(drawer.getHtml());
-    drawer.onInsert();
-    */
-
-    /* Full DrawerJS configuration for reference */
-    /*
-    window.drawer = new DrawerJs.Drawer(null, {
-        plugins: drawerPlugins,
-        corePlugins: [
-            'Zoom' // use null here if you want to disable Zoom completely
-        ],
-        pluginsConfig: {
-            Image: {
-                scaleDownLargeImage: true,
-                maxImageSizeKb: 10240, //1MB
-                cropIsActive: true
-            },
-            BackgroundImage: {
-                scaleDownLargeImage: true,
-                maxImageSizeKb: 10240, //1MB
-                //fixedBackgroundUrl: '/examples/redactor/images/vanGogh.jpg',
-                imagePosition: 'center',  // one of  'center', 'stretch', 'top-left', 'top-right', 'bottom-left', 'bottom-right'
-                acceptedMIMETypes: ['image/jpeg', 'image/png', 'image/gif'] ,
-                dynamicRepositionImage: true,
-                dynamicRepositionImageThrottle: 100,
-                cropIsActive: false
-            },
-            Text: {
-                editIconMode : false,
-                editIconSize : 'large',
-                defaultValues : {
-                    fontSize: 72,
-                    lineHeight: 2,
-                    textFontWeight: 'bold'
-                },
-                predefined: {
-                    fontSize: [8, 12, 14, 16, 32, 40, 72],
-                    lineHeight: [1, 2, 3, 4, 6]
-                }
-            },
-            Zoom: {
-                enabled: true, 
-                showZoomTooltip: true, 
-                useWheelEvents: true,
-                zoomStep: 1.05, 
-                defaultZoom: 1, 
-                maxZoom: 32,
-                minZoom: 1, 
-                smoothnessOfWheel: 0,
-                //Moving:
-                enableMove: true,
-                enableWhenNoActiveTool: true,
-                enableButton: true
-            }
-        },
-        toolbars: {
-            drawingTools: {
-                position: 'top',         
-                positionType: 'outside',
-                customAnchorSelector: '#custom-toolbar-here',  
-                compactType: 'scrollable',   
-                hidden: false,     
-                toggleVisibilityButton: false,
-                fullscreenMode: {
-                    position: 'top', 
-                    hidden: false,
-                    toggleVisibilityButton: false
-                }
-            },
-            toolOptions: {
-                position: 'bottom', 
-                positionType: 'inside',
-                compactType: 'popup',
-                hidden: false,
-                toggleVisibilityButton: false,
-                fullscreenMode: {
-                    position: 'bottom', 
-                    compactType: 'popup',
-                    hidden: false,
-                    toggleVisibilityButton: false
-                }
-            },
-            settings : {
-                position : 'right', 
-                positionType: 'inside',					
-                compactType : 'scrollable',
-                hidden: false,	
-                toggleVisibilityButton: false,
-                fullscreenMode: {
-                    position : 'right', 
-                    hidden: false,
-                    toggleVisibilityButton: false
-                }
-            }
-        },
-            defaultImageUrl: '/examples/redactor/images/drawer.jpg',
-        defaultActivePlugin : { name : 'Pencil', mode : 'lastUsed'},
-        debug: true,
-        activeColor: '#a1be13',
-        transparentBackground: true,
-        align: 'floating',  //one of 'left', 'right', 'center', 'inline', 'floating'
-        lineAngleTooltip: { enabled: true, color: 'blue',  fontSize: 15}
-    }, 400, 400);
-
-    $('#canvas-editor').append(window.drawer.getHtml());
-    window.drawer.onInsert();
-    */
-
+    
     $(document).on("click", "#btnDownload", function (e) {
-        console.log("Download Button clicked");
 
+        // Download
         drawer.api.stopEditing();
         if (type == 1) {
             // Capture
             const uriPromise = outputCapture();
             uriPromise.then(function (uri) {
-                console.log(uri);
-                const filenamePromise = getOutputFileName();
+                //console.log("[Debug] Output image:");
+                //console.log(uri);
+                const filenamePromise = getOutputFilename();
                 filenamePromise.then(function (outputFilename) {
-                    downloadURI(uri, outputFilename + ".jpg");
+                    var name = outputFilename + ".jpg";
+                    downloadURI(uri, name);
+                    console.log("[Debug] Downloaded image: " + name);
                 })
             })
         } else if (type == 2) {
@@ -432,13 +312,15 @@ $(document).ready(function () {
                 })
             }
             setTimeout(function () {
-                console.log("gif output done");
                 encoder.finish();
                 var gifDataUrl = 'data:image/gif;base64,' + encode64(encoder.stream().getData());
-                console.log(gifDataUrl);
-                const filenamePromise = getOutputFileName();
+                //console.log("[Debug] Output GIF:");
+                //console.log(gifDataUrl);
+                const filenamePromise = getOutputFilename();
                 filenamePromise.then(function (outputFilename) {
-                    encoder.download(outputFilename + ".gif");
+                    var name = outputFilename + ".gif";
+                    encoder.download(name);
+                    console.log("[Debug] Downloaded GIF: " + name);
                 })
             }, 1000);
         }
