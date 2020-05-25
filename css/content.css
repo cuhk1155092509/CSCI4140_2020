@@ -3,10 +3,7 @@
 
 .gc-font {
     font-size: 16px;
-    font-family: "Lato","PingFang TC", "Helvetica Neue", Helvetica, "微軟正黑體", "新細明體", Arial, sans-serif;
-}
-
-.gc-font .emoji {
+    font-family: "Lato", "PingFang TC", "Helvetica Neue", Helvetica, "微軟正黑體", "新細明體", Arial, sans-serif;
 }
 
 #gc-hint-overlay {
@@ -75,17 +72,6 @@
     margin-left: 71px;
 }
 
-#gc-debug {
-    height: 100%;
-    width: 100%;
-    position: fixed;
-    z-index: 9999;
-    top: 0px;
-    left: 0px;
-    font-size: 20px;
-    color: #000;
-    margin: 200px 100px;
-}
 
 #gc-capframe-border {
     position: fixed;
@@ -101,9 +87,10 @@
 }
 
 #gc-capframe-toolbar {
-    height: 39px;
+    height: 36px;
     width: 100%;
     min-width: 170px;
+    box-sizing: content-box;
     background-color: rgba(0, 0, 0, 0.8);
     border: 3px solid #000;
     border-bottom: none;
@@ -152,6 +139,7 @@
     flex-direction: row;
     height: 100%;
     border: 3px solid #000;
+    box-sizing: content-box;
     user-select: none;
     background-color:rgba(0,0,0,0);
 }
@@ -160,4 +148,20 @@
     width: 100%;
     height: 100%;
     background-color:rgba(0,0,0,0);
+    box-sizing: content-box;
+}
+
+#gc-debug {
+    /* Comment next line to start debug */
+    display: none;
+    /* ================================ */
+    height: 100%;
+    width: 100%;
+    position: fixed;
+    z-index: 9999;
+    top: 0px;
+    left: 0px;
+    font-size: 20px;
+    color: #000;
+    margin: 200px 100px;
 }

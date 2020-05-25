@@ -1,3 +1,8 @@
+// Consts of file location
+const htmlInjectOverlay = "../html/inject_overlay.html";
+const htmlInjectCapframe = "../html/inject_capframe.html";
+const htmlEditor = "../html/editor.html";
+
 // Inject empty gc-container into every webpage
 var containerHtml = "<div id=\"gc-container\"></div>";
 $("body").append(containerHtml);
@@ -17,7 +22,7 @@ chrome.runtime.onMessage.addListener(
       reset_button();
       chrome.runtime.sendMessage({
         msg: "open_editor_gif",
-        editorUrl: chrome.runtime.getURL('editor.html')
+        editorUrl: chrome.runtime.getURL(htmlEditor)
       });
     }
 
@@ -37,7 +42,7 @@ function getDX() { return Math.abs(gcStart.x - gcEnd.x); }
 function getDY() { return Math.abs(gcStart.y - gcEnd.y); }
 
 function start_selection() {
-  $.get(chrome.runtime.getURL('content_overlay.html'), function(data) {
+  $.get(chrome.runtime.getURL(htmlInjectOverlay), function(data) {
     $("#gc-container").html(data);
     //console.log("Injected overlay html");
     isSelecting = false;
@@ -55,7 +60,7 @@ function submit_selection() {
   capDX = getDX();
   capDY = getDY();
   console.log('Start:(' + gcStart.x + ',' + gcStart.y + ') | End:(' + gcEnd.x + ',' + gcEnd.y + ') | X:'+capX+' | Y:'+capY+' | DX:'+capDX+' | DY:'+capDY);
-  $.get(chrome.runtime.getURL('content_capframe.html'), function(data) {
+  $.get(chrome.runtime.getURL(htmlInjectCapframe), function(data) {
     $("#gc-container").html(data);
     init_capframe();
   });
@@ -136,8 +141,16 @@ function init_capframe() {
     "border-style": "solid",
     "border-color": "rgba(0, 0, 0, 0.2)"
   });
+  $("#gc-capframe-toolbar").css({
+    "width": capDX
+  })
   $("#gc-capframe-frame").css({
-    "height": capDY + 6
+    "width": capDX,
+    "height": capDY
+  })
+  $("#gc-capframe").css({
+    "width": capDX,
+    "height": capDY
   })
 }
 var screenDataURL;
@@ -156,7 +169,7 @@ function screenCapture() {
     //console.log(response.data);
     chrome.runtime.sendMessage({
       msg: "open_editor",
-      editorUrl: chrome.runtime.getURL('editor.html'),
+      editorUrl: chrome.runtime.getURL(htmlEditor),
       dataUrl: response.data,
       w: response.w,
       h: response.h
@@ -179,7 +192,7 @@ function startGifCap() {
     /*
     chrome.runtime.sendMessage({
       msg: "open_editor",
-      editorUrl: chrome.runtime.getURL('editor.html'),
+      editorUrl: chrome.runtime.getURL(htmlEditor),
       dataUrl: response.data,
       w: response.w,
       h: response.h

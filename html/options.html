@@ -1,0 +1,34 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <link rel="stylesheet" href="../css/options.css"/>
+        <script src="../lib/jquery-3.4.1.min.js"></script>
+        <script src="../js/options.js"></script>
+        <link rel="icon" href="../icon.png">
+        <title>GIFCap Options</title>
+    </head>
+    <body>
+        <div id="header">
+            <span>GIFCap Options</span>
+            <div id="btnSave">Save</div>
+        </div>
+        <div id="content">
+            <div id="options-box">
+                <div class="option-field">
+                    <label for="gifFps">GIF's FPS</label>
+                    <select class="form-control" id="gifFps">
+                        <option value="2">2</option>
+                        <option value="4">4</option>
+                        <option value="6" selected="selected">6</option>
+                        <option value="8">8</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+                <div class="option-field">
+                    <label for="outputFilename">Output Filename</label>
+                    <input type="text" class="form-control" id="outputFilename" placeholder="gifcap">
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

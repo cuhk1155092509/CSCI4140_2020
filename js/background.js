@@ -2,10 +2,30 @@ var recording;
 var frame = 0;
 var gif = new Array();
 var x, y, dx, dy;
-
-// Can add method to change from settings page
-var fps = 5;
 var maxFrame = 100;
+
+// Default values of custom variables
+var defaultFps = 6;
+var fps;
+var defaultOutputFilename = "gifcap";
+
+function getFps() {
+  return new Promise(function(resolve, reject) {
+    chrome.storage.sync.get("gcFps", function(result) {
+      if(typeof result.gcFps !== 'undefined') {
+        fps = result.gcFps;
+        console.log("[ChromeStorage] Get FPS: " + fps);
+      } else {
+        fps = defaultFps;
+        chrome.storage.sync.set({"gcFps": defaultFps}, function() {
+          console.log("[ChromeStorage] Set FPS: " + defaultFps);
+        });
+      }
+      resolve(fps);
+    });
+  })
+}
+
 
 function stopRecording() {
   clearInterval(recording);
@@ -55,51 +75,56 @@ chrome.runtime.onMessage.addListener(
     } else if(request.msg === "gifStart") {
       
       // Recevied start recording message
-      var interval = Math.round(1000 / fps);
-      frame = 0;
-      gif = new Array();
-
-      x = request.x;
-      y = request.y;
-      dx = request.dx;
-      dy = request.dy;
-
-      var canvas = document.getElementById('myCanvas');
-      canvas.width = dx;
-      canvas.height = dy;
-      var context = canvas.getContext('2d');
-      console.log("Gif starts recording");
-
-      // set up recorder
-      recording = setInterval(function() {
-
-        // code to record 1 frame
-        chrome.tabs.captureVisibleTab(
-          null,
-          {},
-          function(dataUrl)
-          {
-            
-            var imageObj = new Image();
-            imageObj.onload = function() {
-              context.drawImage(this, x, y, dx, dy, 0, 0, dx, dy);
-              var newDataUrl = canvas.toDataURL('image/jpeg');
-              gif.push(newDataUrl);
-              sendResponse({
-                frame: frame
-              });
-            };
-            imageObj.src = dataUrl;
+      const fpsPromise = getFps();
+      fpsPromise.then(function(fps) {
+        console.log("used fps" + fps);
+        var interval = Math.round(1000 / fps);
+        frame = 0;
+        gif = new Array();
+  
+        x = request.x;
+        y = request.y;
+        dx = request.dx;
+        dy = request.dy;
+  
+        var canvas = document.getElementById('myCanvas');
+        canvas.width = dx;
+        canvas.height = dy;
+        var context = canvas.getContext('2d');
+        console.log("Gif starts recording");
+  
+        // set up recorder
+        recording = setInterval(function() {
+  
+          // code to record 1 frame
+          chrome.tabs.captureVisibleTab(
+            null,
+            {},
+            function(dataUrl)
+            {
+              
+              var imageObj = new Image();
+              imageObj.onload = function() {
+                context.drawImage(this, x, y, dx, dy, 0, 0, dx, dy);
+                var newDataUrl = canvas.toDataURL('image/jpeg');
+                gif.push(newDataUrl);
+                sendResponse({
+                  frame: frame
+                });
+              };
+              imageObj.src = dataUrl;
+            }
+          );
+  
+          frame = frame + 1;
+          console.log("frame:"+ frame)
+          if(frame >= maxFrame) {
+            stopRecording();
+            console.log("gifRecordEnd sent (auto stop)");
           }
-        );
-
-        frame = frame + 1;
-        console.log("frame:"+ frame)
-        if(frame >= maxFrame) {
-          stopRecording();
-          console.log("gifRecordEnd sent (auto stop)");
-        }
-      }, interval);
+        }, interval);
+      })
+      
       
     } else if(request.msg === "gifStop") {
 
@@ -147,7 +172,8 @@ chrome.runtime.onMessage.addListener(
               type: 2,
               w: dx,
               h: dy,
-              frame: frame
+              frame: frame,
+              fps: fps
             }, function(response){
               if(response.status == 2) {
                 console.log("Editor received GIF Array");

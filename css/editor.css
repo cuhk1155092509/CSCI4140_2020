@@ -39,8 +39,11 @@ body>div>div {
 
 #btnDownload {
     display: inline-block;
+    position: absolute;
+    right: 40px;
+    top: 18px;
     height: 24px;
-    width: 100px;
+    padding: 0 10px;
     font-size: 18px;
     line-height: 24px;
     border: 1px solid #e6ebd79a;
@@ -48,10 +51,6 @@ body>div>div {
     border-radius: 3px;
     text-align: center;
     cursor: pointer;
-    position: absolute;
-    right: 40px;
-    top: 18px;
-
 }
 
 #content {
@@ -62,6 +61,7 @@ body>div>div {
 }
 
 #footer {
+    display: none;
     bottom: 0;
     height: 200px;
     background-color: #5694f0;
@@ -106,11 +106,29 @@ body>div>div {
 
 .gifFramePreview {
     width: 170px;
+    min-width: 170px;
     height: 170px;
-    margin: 6px;
+    padding: 6px;
 }
 
 .gifFramePreview img{
+    width: 160px;
+    height: 160px;
+    transform: translate(5px, 5px);
+}
+
+.gifFramePreview:hover img {
     width: 170px;
     height: 170px;
+    transform: none;
+}
+
+.gifFramePreview.selected {
+    background-color: #4476C0;
+}
+
+.gifFramePreview.selected img {
+    width: 170px;
+    height: 170px;
+    transform: none;
 }

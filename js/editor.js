@@ -1,52 +1,88 @@
-
-var drawer;
 var pageLoaded = false;
+var drawer;
+var gifPlaying, playIndex;
+
 var type;
 var imgWidth, imgHeight;
-var imgFrame;
+var imgFrame, imgFps;
 var gifArray;
 var gifArrayEdited = new Array();
 
 /* User variable */
-var outputFileName = "gifcap";
+var outputFileName;
+var defaultOutputFilename = "gifcap";
 
-// Can add method to change from settings page
-var fps = 5;
+function getOutputFileName() {
+    return new Promise(function (resolve, reject) {
+        chrome.storage.sync.get("gcOutputFilename", function (result) {
+            if (typeof result.gcOutputFilename !== 'undefined') {
+                outputFilename = result.gcOutputFilename;
+                console.log("[ChromeStorage] Get OutputFilename: " + outputFilename);
+            } else {
+                outputFilename = defaultOutputFilename;
+                chrome.storage.sync.set({ "gcOutputFilename": outputFilename }, function () {
+                    console.log("[ChromeStorage] Set OutputFilename: " + outputFilename);
+                });
+            }
+            resolve(outputFilename);
+        });
+    })
+}
+
+function startGifPlaying() {
+    var interval = Math.round(1000 / imgFps);
+    playIndex = 0;
+    gifPlaying = setInterval(function () {
+        $("#rawImg").attr("src", gifArray[playIndex]);
+        if(playIndex + 1 == imgFrame) {
+            playIndex = 0;
+        } else {
+            playIndex = playIndex + 1;
+        }
+        
+    }, interval);
+}
+
+function stopGifPlaying() {
+    clearInterval(gifPlaying);
+}
+
 
 chrome.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
         if (request.msg === "initEditor") {
 
             // Check if this editor page is loaded or not
-            if(!pageLoaded) {
+            if (!pageLoaded) {
                 pageLoaded = true;
 
                 // Check type of editing
-                if(request.type == 1) {
+                if (request.type == 1) {
 
                     // Capture
                     console.log("[Cap] Received");
-                    sendResponse({status: 1});
+                    sendResponse({ status: 1 });
                     type = 1;
                     imgWidth = request.w;
                     imgHeight = request.h;
                     createCanvas(request.dataUrl, request.w, request.h);
 
-                } else if(request.type == 2) {
+                } else if (request.type == 2) {
 
                     // Gif
                     console.log("[GIF] Received");
-                    sendResponse({status: 2})
+                    sendResponse({ status: 2 })
                     type = 2;
                     imgWidth = request.w;
-                    imgHeight= request.h;
+                    imgHeight = request.h;
                     imgFrame = request.frame;
+                    imgFps = request.fps;
                     gifArray = request.gifArray;
                     createCanvas(gifArray[0], request.w, request.h);
                     createPreviews();
 
                 }
-                
+
             }
         }
     }
@@ -58,7 +94,7 @@ function createCanvas(dataUrl, width, height) {
         plugins: drawerPlugins,
         transparentBackground: true,
         defaultImageUrl: '/assets/transparent.png',
-        defaultActivePlugin : { name : 'Pencil', mode : 'lastUsed'},
+        defaultActivePlugin: { name: 'Pencil', mode: 'lastUsed' },
     }, width, height);
     $('#canvas-editor').append(drawer.getHtml());
     drawer.onInsert();
@@ -66,26 +102,28 @@ function createCanvas(dataUrl, width, height) {
     drawer.api.stopEditing();
     var rawImgHtml = "<img id='rawImg' src='" + dataUrl + "' style='position: fixed;top: 0px;left: 0px;user-select: none;z-index: -1;'>";
     $(".editable-canvas-image").parent().append(rawImgHtml);
+    startGifPlaying();
 }
 
 function createPreviews() {
-    for(const frame in gifArray) {
+    $("#footer").show();
+    for (const frame in gifArray) {
         var previewHtml = "<div class='gifFramePreview' data-index='" + frame + "'><img src='" + gifArray[frame] + "'></img></div>";
         $("#preview-box").append(previewHtml);
     }
 }
 
 function outputCapture() {
-    return new Promise(function(resolve, reject) {
+    return new Promise(function (resolve, reject) {
         var imgLoaded = 0;
         function checkload(e) {
             imgLoaded++;
-            console.log("loaded 1");
-            if(imgLoaded < 2) {
+            //console.log("loaded 1");
+            if (imgLoaded < 2) {
                 return;
             }
             var canvas = document.querySelector("#merge-canvas");
-            canvas.width  = imgWidth;
+            canvas.width = imgWidth;
             canvas.height = imgHeight;
             var context = canvas.getContext('2d');
             context.drawImage(raw, 0, 0, imgWidth, imgHeight, 0, 0, imgWidth, imgHeight);
@@ -108,16 +146,16 @@ function outputCapture() {
 }
 
 function outputGifFrame(frame) {
-    return new Promise(function(resolve, reject) {
+    return new Promise(function (resolve, reject) {
         var imgLoaded = 0;
         function checkload(e) {
             imgLoaded++;
             console.log("loaded 1");
-            if(imgLoaded < 2) {
+            if (imgLoaded < 2) {
                 return;
             }
             var canvas = document.querySelector("#merge-canvas");
-            canvas.width  = imgWidth;
+            canvas.width = imgWidth;
             canvas.height = imgHeight;
             var context = canvas.getContext('2d');
             context.drawImage(raw, 0, 0, imgWidth, imgHeight, 0, 0, imgWidth, imgHeight);
@@ -159,7 +197,7 @@ var customLocalization = {
     'Eraser': 'Eraser',
     'Delete this canvas': 'Delete this canvas',
     'Are you sure want to delete this canvas?': 'Are you sure want to delete this canvas?',
-    
+
     // Canvas properties popup
     'Size (px)': 'Size (px)',
     'Position': 'Position',
@@ -173,11 +211,11 @@ var customLocalization = {
     'transparent': 'transparent',
     'Cancel': 'Cancel',
     'Save': 'Save',
-    
+
     // Fullscreen plugin
     'Enter fullscreen mode': 'Enter fullscreen mode',
     'Exit fullscreen mode': 'Exit fullscreen mode',
-    
+
     // Shape context menu plugin
     'Bring forward': 'Bring forward',
     'Send backwards': 'Send backwards',
@@ -185,47 +223,47 @@ var customLocalization = {
     'Send to back': 'Send to back',
     'Duplicate': 'Duplicate',
     'Remove': 'Remove',
-    
+
     // Brush size plugin
     'Size:': 'Size:',
-    
+
     // Color picker plugin
     'Fill:': 'Fill:',
     'Transparent': 'Transparent',
     // shape border plugin
     'Border:': 'Border:',
     'None': 'None',
-    
+
     // Arrow plugin
     'Draw an arrow': 'Draw an arrow',
     'Draw a two-sided arrow': 'Draw a two-sided arrow',
     'Lines and arrows': 'Lines and arrows',
-    
+
     // Circle plugin
     'Draw a circle': 'Draw a circle',
-    
+
     // Line plugin
     'Draw a line': 'Draw a line',
-    
+
     // Rectangle plugin
     'Draw a rectangle': 'Draw a rectangle',
-    
+
     // Triangle plugin
     'Draw a triangle': 'Draw a triangle',
-    
+
     // Polygon plugin
     'Draw a Polygon': 'Draw a Polygon',
     'Stop drawing a polygon': 'Stop drawing a polygon (esc)',
     'Click to start a new line': 'Click to start a new line',
-    
+
     // Text plugin
     'Draw a text': 'Draw a text',
     'Click to place a text': 'Click to place a text',
     'Font:': 'Font:',
-    
+
     // Movable floating mode plugin
     'Move canvas': 'Move canvas',
-    
+
     // Base shape
     'Click to start drawing a ': 'Click to start drawing a '
 };
@@ -244,8 +282,7 @@ var drawerPlugins = [
     'Color',
     'ShapeBorder',
     'BrushSize',
-    'ShapeContextMenu',
-    'BackgroundImage'
+    'ShapeContextMenu'
 ];
 
 $(document).ready(function () {
@@ -259,7 +296,7 @@ $(document).ready(function () {
     $('#canvas-editor').append(drawer.getHtml());
     drawer.onInsert();
     */
-    
+
     /* Full DrawerJS configuration for reference */
     /*
     window.drawer = new DrawerJs.Drawer(null, {
@@ -364,62 +401,64 @@ $(document).ready(function () {
     window.drawer.onInsert();
     */
 
-    $(document).on("click", "#btnDownload", function(e) {
+    $(document).on("click", "#btnDownload", function (e) {
         console.log("Download Button clicked");
 
         drawer.api.stopEditing();
-        if(type == 1) {
+        if (type == 1) {
             // Capture
             const uriPromise = outputCapture();
-            uriPromise.then(function(uri) {
+            uriPromise.then(function (uri) {
                 console.log(uri);
-                downloadURI(uri, outputFileName);
+                const filenamePromise = getOutputFileName();
+                filenamePromise.then(function (outputFilename) {
+                    downloadURI(uri, outputFilename + ".jpg");
+                })
             })
-        } else if(type == 2){
+        } else if (type == 2) {
             // Gif
             var encoder = new GIFEncoder();
             encoder.setRepeat(0);
-            var interval = Math.round(1000 / fps);
+            var interval = Math.round(1000 / imgFps);
             encoder.setDelay(interval);
             encoder.start();
 
             gifArrayEdited = new Array();
             var i;
-            for(i = 0; i < imgFrame; i++) {
+            for (i = 0; i < imgFrame; i++) {
                 const uriPromise = outputGifFrame(i);
-                /*uriPromise.then(function(uri) {
-                    //console.log(uri);
-                    gifArrayEdited.push(uri);
-                    encoder.addFrame(uri, true);
-                })*/
-                uriPromise.then(function(cxt) {
-                    //console.log(uri);
-                    //gifArrayEdited.push(uri);
+                uriPromise.then(function (cxt) {
                     encoder.addFrame(cxt);
                 })
             }
-            /*
-            const uriPromise = outputGif();
-            uriPromise.then(function(uri) {
-                console.log(uri);
-                downloadURI(uri, outputFileName);
-            })*/
-            setTimeout(function() {
+            setTimeout(function () {
                 console.log("gif output done");
                 encoder.finish();
-                var gifDataUrl = 'data:image/gif;base64,'+encode64(encoder.stream().getData());
+                var gifDataUrl = 'data:image/gif;base64,' + encode64(encoder.stream().getData());
                 console.log(gifDataUrl);
-                encoder.download(outputFileName + ".gif");
+                const filenamePromise = getOutputFileName();
+                filenamePromise.then(function (outputFilename) {
+                    encoder.download(outputFilename + ".gif");
+                })
             }, 1000);
         }
     });
 
-    $(document).on("click", ".gifFramePreview", function(e) {
+    $(document).on("click", ".gifFramePreview", function (e) {
         var index = $(this).data("index");
         console.log("Frame" + index + " Preview Clicked");
-        $("#rawImg").attr("src", $(this).children().attr("src"));
+        
+        if(!$(this).hasClass("selected")) {
+            $(".gifFramePreview").removeClass("selected");
+            $(this).addClass("selected");
+            stopGifPlaying();
+            $("#rawImg").attr("src", $(this).children().attr("src"));
+        } else {
+            $(this).removeClass("selected");
+            startGifPlaying();
+        }
+        
     });
 
 });
 
-    
